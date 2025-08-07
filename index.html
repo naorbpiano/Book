@@ -1,0 +1,428 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Naorbar | AlphaKey - Chord & Scale Database</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Tone.js library for audio -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.7.77/Tone.js"></script>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@400;700;800&display=swap" rel="stylesheet">
+    <!-- PWA Manifest -->
+    <link rel="manifest" href="manifest.json">
+    <style>
+        html {
+            scroll-behavior: smooth;
+            scroll-padding-top: 80px;
+        }
+        body {
+            font-family: 'Heebo', sans-serif;
+            background-color: #000;
+            background-image: url('https://images.unsplash.com/photo-1507838153414-b4b713384a76?q=80&w=2070&auto=format&fit=crop');
+            background-size: cover;
+            background-attachment: fixed;
+            background-position: center;
+            background-blend-mode: multiply;
+            background-color: rgba(0, 0, 0, 0.85);
+            color: #d1d5db;
+        }
+        .content-card {
+            background-color: rgba(17, 24, 39, 0.7);
+            backdrop-filter: blur(8px);
+            border-radius: 12px;
+            border: 1px solid rgba(255,255,255,0.1);
+            box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+            overflow: hidden;
+        }
+        .form-input, .qa-textarea {
+            background-color: rgba(31, 41, 55, 0.7);
+            border: 1px solid #4b5563;
+            color: #d1d5db;
+        }
+        .form-input:focus, .qa-textarea:focus {
+            background-color: rgba(31, 41, 55, 1);
+            border-color: #6366f1;
+            outline: none;
+            box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.5);
+        }
+        .action-button {
+            background-color: #4f46e5;
+            transition: background-color 0.2s;
+        }
+        .action-button:hover {
+            background-color: #4338ca;
+        }
+        .nav-link {
+            padding: 8px 16px;
+            border-radius: 8px;
+            transition: all 0.2s ease-in-out;
+            font-weight: 700;
+            border: 2px solid transparent;
+            color: #d1d5db;
+        }
+        .note-button {
+            width: 48px;
+            height: 48px;
+            font-weight: 700;
+            font-size: 1.1rem;
+            border-radius: 0.5rem;
+            transition: all 0.2s ease-in-out;
+            box-shadow: 0 1px 3px rgba(0,0,0,0.4);
+            border: 1px solid #4b5563;
+            background-color: #1f2937;
+            color: #d1d5db;
+        }
+        .note-button.active {
+            background-color: #4f46e5;
+            color: white;
+            transform: scale(1.1);
+            box-shadow: 0 4px 10px rgba(79, 70, 229, 0.4);
+            border-color: #4f46e5;
+        }
+        .piano-container {
+            overflow-x: auto;
+            padding: 10px 0;
+            -webkit-overflow-scrolling: touch;
+        }
+        .piano {
+            display: flex;
+            justify-content: center;
+            direction: ltr;
+            width: fit-content;
+            margin: 0.5rem auto 0;
+        }
+        .key {
+            border: 1px solid #000;
+            box-sizing: border-box;
+            position: relative;
+            cursor: pointer;
+        }
+        .white { width: 22px; height: 120px; background-color: #f8f9fa; border-radius: 0 0 4px 4px; z-index: 1; }
+        .black { width: 13px; height: 75px; background-color: #212529; margin: 0 -6.5px; z-index: 2; border-radius: 0 0 2px 2px; }
+        .key.playing { background: #4f46e5; border-color: #6366f1; }
+        .key.highlighted.white { background: linear-gradient(to bottom, #34d399, #059669); }
+        .key.highlighted.black { background: linear-gradient(to bottom, #10b981, #059669); }
+        .chord-card .key.highlighted.white { background: linear-gradient(to bottom, #60a5fa, #3b82f6); }
+        .chord-card .key.highlighted.black { background: linear-gradient(to bottom, #3b82f6, #2563eb); }
+        .key .note-name { position: absolute; left: 50%; transform: translateX(-50%); font-size: 11px; font-weight: 700; pointer-events: none; }
+        .white .note-name { bottom: 8px; color: #343a40; }
+        .black .note-name { bottom: 6px; color: #f8f9fa; }
+        .play-button { background-color: rgba(31, 41, 55, 0.7); border: 1px solid #4b5563; color: #d1d5db; padding: 8px 12px; border-radius: 6px; transition: all 0.2s; cursor: pointer; }
+        .play-button:hover { background-color: #4f46e5; border-color: #4f46e5; }
+        [dir="ltr"] { direction: ltr; }
+        [dir="rtl"] { direction: rtl; }
+    </style>
+</head>
+<body class="text-gray-200">
+
+    <!-- Auth Container - Visible when logged out -->
+    <div id="auth-container" class="min-h-screen flex items-center justify-center p-4">
+        <div class="w-full max-w-md">
+            <div class="content-card p-8">
+                <div class="text-center mb-8">
+                    <h1 class="text-4xl font-extrabold text-white" dir="ltr">AlphaKey</h1>
+                    <p class="text-gray-300 mt-2">התחבר או הירשם כדי לגשת למאגרים</p>
+                </div>
+                <form id="auth-form" class="space-y-6">
+                    <div>
+                        <label for="email" class="block text-sm font-medium text-gray-300">אימייל</label>
+                        <input type="email" id="email" name="email" required class="form-input mt-1 block w-full rounded-md p-3 text-lg" dir="ltr">
+                    </div>
+                    <div>
+                        <label for="password" class="block text-sm font-medium text-gray-300">סיסמה</label>
+                        <input type="password" id="password" name="password" required class="form-input mt-1 block w-full rounded-md p-3 text-lg" dir="ltr">
+                    </div>
+                    <p id="auth-error" class="text-red-400 text-sm text-center h-5"></p>
+                    <div class="flex flex-col space-y-4">
+                        <button type="submit" id="login-btn" class="action-button w-full text-white font-bold py-3 px-4 rounded-md">התחברות</button>
+                        <button type="submit" id="signup-btn" class="action-button w-full text-white font-bold py-3 px-4 rounded-md">הרשמה</button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- App Container - Visible when logged in -->
+    <div id="app-container" class="hidden">
+        <header class="bg-gray-900/50 backdrop-blur-sm shadow-lg sticky top-0 z-20 border-b border-gray-700">
+            <nav class="container mx-auto px-4 sm:px-6 py-3 flex justify-between items-center">
+                <a href="#interactive-piano" class="text-2xl font-bold text-white">Naorbar | AlphaKey</a>
+                <div class="hidden sm:flex items-center space-x-2 space-x-reverse">
+                    <a href="#chords" class="nav-link">אקורדים</a>
+                    <a href="#scales" class="nav-link">סולמות</a>
+                    <a href="#q-and-a" class="nav-link">שאלות ותשובות</a>
+                    <a href="#about" class="nav-link">אודות</a>
+                    <a href="https://whatsapp.com/channel/0029VbAvIpK9RZAYqDynbn3y" target="_blank" class="nav-link">קהילה</a>
+                    <button id="logout-btn" class="nav-link">התנתק</button>
+                </div>
+                <div class="sm:hidden">
+                    <button id="menu-btn-loggedin" type="button" class="text-gray-200 hover:text-white focus:outline-none focus:text-white">
+                        <svg class="h-6 w-6 fill-current" viewBox="0 0 24 24" stroke="currentColor" stroke-width="2">
+                            <path id="menu-open-icon-loggedin" stroke-linecap="round" stroke-linejoin="round" d="M4 6h16M4 12h16m-7 6h7"></path>
+                            <path id="menu-close-icon-loggedin" class="hidden" stroke-linecap="round" stroke-linejoin="round" d="M6 18L18 6M6 6l12 12"></path>
+                        </svg>
+                    </button>
+                </div>
+            </nav>
+        </header>
+
+        <div id="mobile-menu-loggedin" class="hidden sm:hidden bg-gray-900/95 backdrop-blur-md fixed top-[69px] left-0 w-full z-10">
+            <div class="flex flex-col items-center space-y-4 py-4">
+                <a href="#chords" class="nav-link mobile-link-loggedin text-lg">אקורדים</a>
+                <a href="#scales" class="nav-link mobile-link-loggedin text-lg">סולמות</a>
+                <a href="#q-and-a" class="nav-link mobile-link-loggedin text-lg">שאלות ותשובות</a>
+                <a href="#about" class="nav-link mobile-link-loggedin text-lg">אודות</a>
+                <a href="https://whatsapp.com/channel/0029VbAvIpK9RZAYqDynbn3y" target="_blank" class="nav-link mobile-link-loggedin text-lg">קהילה</a>
+                <button id="logout-btn-mobile" class="nav-link text-lg">התנתק</button>
+            </div>
+        </div>
+
+        <div class="container mx-auto p-4 sm:p-6">
+            <main>
+                <section id="interactive-piano" class="py-10">
+                    <div class="content-card p-6 text-center">
+                        <h2 class="text-3xl font-extrabold text-white mb-4">פסנתר אינטראקטיבי</h2>
+                        <p class="text-lg text-gray-300 mb-6">לחץ על הקלידים כדי לשמוע את הצלילים</p>
+                        <div id="interactive-piano-container"></div>
+                    </div>
+                </section>
+
+                <section id="chords" class="py-10">
+                    <div class="content-card p-6 mb-8 text-center">
+                        <h2 class="text-3xl font-extrabold text-white mb-4" dir="ltr">AlphaKey Chord Database</h2>
+                        <p class="text-lg text-gray-300 mb-6" dir="ltr">Select a root note to see its major and minor chords.</p>
+                        <div id="chord-note-selector" class="flex flex-wrap justify-center gap-3"></div>
+                    </div>
+                    <div id="chords-display" class="grid grid-cols-1 md:grid-cols-2 gap-6"></div>
+                </section>
+
+                <section id="scales" class="py-10">
+                    <div class="space-y-10">
+                        <div class="content-card p-6">
+                            <h2 class="text-3xl font-extrabold text-white text-center mb-4" dir="ltr">AlphaKey Major Scales</h2>
+                            <div id="major-scales-grid" class="grid grid-cols-1 lg:grid-cols-2 gap-4"></div>
+                        </div>
+                        <div class="content-card p-6">
+                            <h2 class="text-3xl font-extrabold text-white text-center mb-4" dir="ltr">AlphaKey Minor Scales</h2>
+                            <div id="minor-scale-type-selector" class="flex justify-center border-b border-gray-700 mb-4"></div>
+                            <div id="minor-scales-grid" class="grid grid-cols-1 lg:grid-cols-2 gap-4"></div>
+                        </div>
+                    </div>
+                </section>
+
+                <section id="q-and-a" class="py-10">
+                    <div class="content-card p-6">
+                        <h2 class="text-3xl font-extrabold text-white text-center mb-6">שאלות ותשובות</h2>
+                        <div class="max-w-2xl mx-auto">
+                            <form id="question-form" class="mb-8">
+                                <label for="question-text" class="block text-lg font-medium text-gray-200 mb-2">יש לך שאלה? שאל את נאור</label>
+                                <textarea id="question-text" rows="3" class="qa-textarea w-full rounded-md p-3 text-lg" placeholder="כתוב את שאלתך כאן..."></textarea>
+                                <button type="submit" class="action-button w-full text-white font-bold py-3 px-4 rounded-md mt-4">שלח שאלה</button>
+                            </form>
+                            <div id="questions-container" class="space-y-6"></div>
+                        </div>
+                    </div>
+                </section>
+
+                 <section id="about" class="py-10">
+                     <div class="content-card p-8 max-w-4xl mx-auto text-center">
+                        <div class="flex justify-center items-center gap-4 mb-6">
+                             <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 256 256" class="text-indigo-400"><path fill="currentColor" d="M232 80a56 56 0 0 0-84.6-49.9L128 41.5l-19.4-11.4A56 56 0 0 0 24 80h208Zm-22.3 16H46.3a40 40 0 0 1 74.2-26.6l5.3 3.1l5.3-3.1a40 40 0 0 1 74.2 26.6ZM24 104v96a16 16 0 0 0 16 16h176a16 16 0 0 0 16-16v-96Zm16 16h16v48a8 8 0 0 1-16 0Zm32 0h16v48a8 8 0 0 1-16 0Zm32 0h16v48a8 8 0 0 1-16 0Zm32 0h16v48a8 8 0 0 1-16 0Zm32 0h16v48a8 8 0 0 1-16 0Zm32 0h16v48a8 8 0 0 1-16 0Z"/></svg>
+                            <h1 class="text-4xl font-extrabold text-white">אודות נאור בר ושיטת AlphaKey</h1>
+                        </div>
+                        <div class="text-lg leading-relaxed text-gray-300 space-y-4">
+                            <p>אני נאור בר, מורה לפסנתר ויוצר שיטת <b>AlphaKey</b> – שיטה שמלמדת לא רק לנגן, אלא לגלות את עצמך דרך הפסנתר.</p>
+                             <a href="https://whatsapp.com/channel/0029VbAvIpK9RZAYqDynbn3y" target="_blank" class="action-button inline-block mt-4 text-white font-bold py-3 px-6 rounded-md">הצטרף לקהילת הוואטסאפ</a>
+                        </div>
+                        <div class="mt-8 pt-6 border-t border-gray-700">
+                             <h3 class="text-2xl font-bold text-white mb-4">יצירת קשר</h3>
+                             <div class="space-y-2 text-lg">
+                                <p><a href="tel:0535212574" class="hover:text-indigo-400"><strong>טלפון:</strong> 053-5212574</a></p>
+                                <p><a href="mailto:naorbpiano@gmail.com" class="hover:text-indigo-400"><strong>אימייל:</strong> naorbpiano@gmail.com</a></p>
+                             </div>
+                        </div>
+                    </div>
+                </section>
+            </main>
+            <footer class="text-center mt-12 py-6 text-gray-500 border-t border-gray-800">
+                <p>&copy; 2024 Naorbar | AlphaKey. כל הזכויות שמורות.</p>
+            </footer>
+        </div>
+    </div>
+    
+    <script type="module">
+        import { initializeApp } from "https://www.gstatic.com/firebasejs/9.17.1/firebase-app.js";
+        import { getAuth, createUserWithEmailAndPassword, signInWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/9.17.1/firebase-auth.js";
+        import { getFirestore, collection, addDoc, query, onSnapshot, serverTimestamp, doc, updateDoc } from "https://www.gstatic.com/firebasejs/9.17.1/firebase-firestore.js";
+
+        const firebaseConfig = {
+          apiKey: "AIzaSyB4HcWWd0sT00tohLMImxh4BuiADBIKBJg",
+          authDomain: "bookforall-be13b.firebaseapp.com",
+          projectId: "bookforall-be13b",
+          storageBucket: "bookforall-be13b.appspot.com",
+          messagingSenderId: "831112697271",
+          appId: "1:831112697271:web:e32e263e37806f7519c432",
+          measurementId: "G-QSZNWY4ZK3"
+        };
+
+        const app = initializeApp(firebaseConfig);
+        const auth = getAuth(app);
+        const db = getFirestore(app);
+
+        const adminUID = "gCXTEuSaNQgyk5uSeWkTUBhJKEX2";
+
+        const authContainer = document.getElementById('auth-container');
+        const appContainer = document.getElementById('app-container');
+        const emailInput = document.getElementById('email');
+        const passwordInput = document.getElementById('password');
+        const loginBtn = document.getElementById('login-btn');
+        const signupBtn = document.getElementById('signup-btn');
+        const logoutBtn = document.getElementById('logout-btn');
+        const logoutBtnMobile = document.getElementById('logout-btn-mobile');
+        const authError = document.getElementById('auth-error');
+        const menuBtnLoggedIn = document.getElementById('menu-btn-loggedin');
+        const mobileMenuLoggedIn = document.getElementById('mobile-menu-loggedin');
+        const menuOpenIconLoggedIn = document.getElementById('menu-open-icon-loggedin');
+        const menuCloseIconLoggedIn = document.getElementById('menu-close-icon-loggedin');
+        const mobileLinksLoggedIn = document.querySelectorAll('.mobile-link-loggedin');
+
+        onAuthStateChanged(auth, (user) => {
+            if (user) {
+                authContainer.classList.add('hidden');
+                appContainer.classList.remove('hidden');
+                initializeMusicApp();
+                initializeQASection();
+            } else {
+                authContainer.classList.remove('hidden');
+                appContainer.classList.add('hidden');
+            }
+        });
+
+        loginBtn.addEventListener('click', async (e) => { e.preventDefault(); authError.textContent = ''; const email = emailInput.value; const password = passwordInput.value; if (!email || !password) { authError.textContent = 'נא למלא אימייל וסיסמה.'; return; } try { await signInWithEmailAndPassword(auth, email, password); } catch (error) { authError.textContent = getHebrewErrorMessage(error.code); } });
+        signupBtn.addEventListener('click', async (e) => { e.preventDefault(); authError.textContent = ''; const email = emailInput.value; const password = passwordInput.value; if (!email || !password) { authError.textContent = 'נא למלא אימייל וסיסמה.'; return; } try { await createUserWithEmailAndPassword(auth, email, password); } catch (error) { authError.textContent = getHebrewErrorMessage(error.code); } });
+        const handleSignOut = async () => { await signOut(auth); };
+        logoutBtn.addEventListener('click', handleSignOut);
+        logoutBtnMobile.addEventListener('click', handleSignOut);
+
+        if (menuBtnLoggedIn) { menuBtnLoggedIn.addEventListener('click', () => { mobileMenuLoggedIn.classList.toggle('hidden'); menuOpenIconLoggedIn.classList.toggle('hidden'); menuCloseIconLoggedIn.classList.toggle('hidden'); }); }
+        mobileLinksLoggedIn.forEach(link => { link.addEventListener('click', () => { mobileMenuLoggedIn.classList.add('hidden'); menuOpenIconLoggedIn.classList.remove('hidden'); menuCloseIconLoggedIn.classList.add('hidden'); }); });
+
+        function getHebrewErrorMessage(errorCode) { switch (errorCode) { case 'auth/invalid-email': return 'כתובת האימייל אינה תקינה.'; case 'auth/user-not-found': case 'auth/wrong-password': return 'אימייל או סיסמה שגויים.'; case 'auth/email-already-in-use': return 'כתובת האימייל כבר קיימת במערכת.'; case 'auth/weak-password': return 'הסיסמה חלשה מדי. נדרשים לפחות 6 תווים.'; default: return 'אירעה שגיאה. נסה שוב.'; } }
+        
+        let qaInitialized = false;
+        function initializeQASection() {
+            if (qaInitialized) return;
+            const questionForm = document.getElementById('question-form');
+            const questionText = document.getElementById('question-text');
+            const questionsContainer = document.getElementById('questions-container');
+
+            questionForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const text = questionText.value.trim();
+                if (text && auth.currentUser) {
+                    await addDoc(collection(db, 'questions'), {
+                        text: text,
+                        uid: auth.currentUser.uid,
+                        email: auth.currentUser.email,
+                        createdAt: serverTimestamp(),
+                        answer: null
+                    });
+                    questionText.value = '';
+                }
+            });
+
+            const q = query(collection(db, 'questions'));
+            onSnapshot(q, (querySnapshot) => {
+                questionsContainer.innerHTML = '';
+                querySnapshot.forEach((docSnap) => {
+                    const question = docSnap.data();
+                    const questionEl = document.createElement('div');
+                    questionEl.className = 'bg-gray-800/50 p-4 rounded-lg';
+                    
+                    let questionHTML = `<p class="text-gray-400 text-sm">${question.email} שאל:</p><p class="text-white text-lg mt-1">${question.text}</p>`;
+                    
+                    if (question.answer) {
+                        questionHTML += `<div class="mt-4 pt-3 border-t border-gray-600"><p class="text-indigo-300 text-sm">התשובה של נאור:</p><p class="text-gray-200 mt-1">${question.answer}</p></div>`;
+                    } else if (auth.currentUser && auth.currentUser.uid === adminUID) {
+                        questionHTML += `<form class="answer-form mt-3" data-id="${docSnap.id}"><textarea class="qa-textarea w-full rounded-md p-2" placeholder="כתוב את תשובתך..."></textarea><button type="submit" class="action-button text-sm py-2 px-3 rounded-md mt-2">שלח תשובה</button></form>`;
+                    }
+                    
+                    questionEl.innerHTML = questionHTML;
+                    questionsContainer.prepend(questionEl);
+                });
+
+                document.querySelectorAll('.answer-form').forEach(form => {
+                    form.addEventListener('submit', async (e) => {
+                        e.preventDefault();
+                        const id = e.target.dataset.id;
+                        const answerText = e.target.querySelector('textarea').value.trim();
+                        if (id && answerText) {
+                            const questionRef = doc(db, 'questions', id);
+                            await updateDoc(questionRef, {
+                                answer: answerText
+                            });
+                        }
+                    });
+                });
+            });
+            qaInitialized = true;
+        }
+
+        let musicAppInitialized = false;
+        let synth;
+
+        function initializeMusicApp() {
+            if (musicAppInitialized) return;
+            synth = new Tone.PolySynth(Tone.FMSynth, { harmonicity: 8, modulationIndex: 2, envelope: { attack: 0.01, decay: 2, sustain: 0.1, release: 2 } }).toDestination();
+            
+            const allRootNotes = ['C', 'C#', 'D', 'D#', 'E', 'F', 'F#', 'G', 'G#', 'A', 'A#', 'B'];
+            const noteMap = [ 'C2', 'C#2', 'D2', 'D#2', 'E2', 'F2', 'F#2', 'G2', 'G#2', 'A2', 'A#2', 'B2', 'C3', 'C#3', 'D3', 'D#3', 'E3', 'F3', 'F#3', 'G3', 'G#3', 'A3', 'A#3', 'B3', 'C4', 'C#4', 'D4', 'D#4', 'E4', 'F4', 'F#4', 'G4', 'G#4', 'A4', 'A#4', 'B4', 'C5', 'C#5', 'D5', 'D#5', 'E5', 'F5', 'F#5', 'G5', 'G#5', 'A5', 'A#5', 'B5', 'C6', 'C#6', 'D6', 'D#6', 'E6', 'F6', 'F#6', 'G6', 'G#6', 'A6', 'A#6', 'B6' ];
+            const pianoKeys = [ { note: 'C', id: 'C3', type: 'white' }, { note: 'C#', id: 'C#3', type: 'black' }, { note: 'D', id: 'D3', type: 'white' }, { note: 'D#', id: 'D#3', type: 'black' }, { note: 'E', id: 'E3', type: 'white' }, { note: 'F', id: 'F3', type: 'white' }, { note: 'F#', id: 'F#3', type: 'black' }, { note: 'G', id: 'G3', type: 'white' }, { note: 'G#', id: 'G#3', type: 'black' }, { note: 'A', id: 'A3', type: 'white' }, { note: 'A#', id: 'A#3', type: 'black' }, { note: 'B', id: 'B3', type: 'white' }, { note: 'C', id: 'C4', type: 'white' }, { note: 'C#', id: 'C#4', type: 'black' }, { note: 'D', id: 'D4', type: 'white' }, { note: 'D#', id: 'D#4', type: 'black' }, { note: 'E', id: 'E4', type: 'white' }, { note: 'F', id: 'F4', type: 'white' }, { note: 'F#', id: 'F#4', type: 'black' }, { note: 'G', id: 'G4', type: 'white' }, { note: 'G#', id: 'G#4', type: 'black' }, { note: 'A', id: 'A4', type: 'white' }, { note: 'A#', id: 'A#4', type: 'black' }, { note: 'B', id: 'B4', type: 'white' }, { note: 'C', id: 'C5', type: 'white' }, { note: 'C#', id: 'C#5', type: 'black' }, { note: 'D', id: 'D5', type: 'white' }, { note: 'D#', id: 'D#5', type: 'black' }, { note: 'E', id: 'E5', type: 'white' } ];
+            const viewableKeyboardStartIndex = noteMap.indexOf('C3');
+            const viewableKeyboardEndIndex = noteMap.indexOf('E5');
+            const scalesData = { 'C': { major: ['C', 'D', 'E', 'F', 'G', 'A', 'B'], naturalMinor: ['C', 'D', 'Eb', 'F', 'G', 'Ab', 'Bb'] }, 'C#': { major: ['C#', 'D#', 'E#', 'F#', 'G#', 'A#', 'B#'], naturalMinor: ['C#', 'D#', 'E', 'F#', 'G#', 'A', 'B'] }, 'Db': { major: ['Db', 'Eb', 'F', 'Gb', 'Ab', 'Bb', 'C'] }, 'D': { major: ['D', 'E', 'F#', 'G', 'A', 'B', 'C#'], naturalMinor: ['D', 'E', 'F', 'G', 'A', 'Bb', 'C'] }, 'D#': { naturalMinor: ['D#', 'E#', 'F#', 'G#', 'A#', 'B', 'C#'] }, 'Eb': { major: ['Eb', 'F', 'G', 'Ab', 'Bb', 'C', 'D'], naturalMinor: ['Eb', 'F', 'Gb', 'Ab', 'Bb', 'Cb', 'Db'] }, 'E': { major: ['E', 'F#', 'G#', 'A', 'B', 'C#', 'D#'], naturalMinor: ['E', 'F#', 'G', 'A', 'B', 'C', 'D'] }, 'F': { major: ['F', 'G', 'A', 'Bb', 'C', 'D', 'E'], naturalMinor: ['F', 'G', 'Ab', 'Bb', 'C', 'Db', 'Eb'] }, 'F#': { major: ['F#', 'G#', 'A#', 'B', 'C#', 'D#', 'E#'], naturalMinor: ['F#', 'G#', 'A', 'B', 'C#', 'D', 'E'] }, 'Gb': { major: ['Gb', 'Ab', 'Bb', 'Cb', 'Db', 'Eb', 'F'] }, 'G': { major: ['G', 'A', 'B', 'C', 'D', 'E', 'F#'], naturalMinor: ['G', 'A', 'Bb', 'C', 'D', 'Eb', 'F'] }, 'G#': { naturalMinor: ['G#', 'A#', 'B', 'C#', 'D#', 'E', 'F#'] }, 'Ab': { major: ['Ab', 'Bb', 'C', 'Db', 'Eb', 'F', 'G'], naturalMinor: ['Ab', 'Bb', 'Cb', 'Db', 'Eb', 'Fb', 'Gb'] }, 'A': { major: ['A', 'B', 'C#', 'D', 'E', 'F#', 'G#'], naturalMinor: ['A', 'B', 'C', 'D', 'E', 'F', 'G'] }, 'A#': { naturalMinor: ['A#', 'B#', 'C#', 'D#', 'E#', 'F#', 'G#'] }, 'Bb': { major: ['Bb', 'C', 'D', 'Eb', 'F', 'G', 'A'], naturalMinor: ['Bb', 'C', 'Db', 'Eb', 'F', 'Gb', 'Ab'] }, 'B': { major: ['B', 'C#', 'D#', 'E', 'F#', 'G#', 'A#'], naturalMinor: ['B', 'C#', 'D', 'E', 'F#', 'G', 'A'] }, };
+            const enharmonicMap = { 'Bb': 'A#', 'Eb': 'D#', 'Ab': 'G#', 'Db': 'C#', 'Gb': 'F#', 'Cb': 'B', 'Fb': 'E', 'E#': 'F', 'B#': 'C', 'Bbb': 'A' };
+            const chordFormulas = { 'Major': { name: 'Major', formula: [0, 4, 7], type: 'major' }, 'Minor': { name: 'm', formula: [0, 3, 7], type: 'minor' }, };
+            let activeChordNote = 'C';
+            const scaleTypeInfo = { naturalMinor: { name: 'Natural Minor', formulaText: 'W-H-W-W-H-W-W' }, harmonicMinor: { name: 'Harmonic Minor', formulaText: 'Natural minor with a raised 7th' }, melodicMinor: { name: 'Melodic Minor', formulaText: 'Natural minor with raised 6th & 7th' } };
+            let activeMinorScaleType = 'naturalMinor';
+            
+            async function playNote(note, duration = "8n") { await Tone.start(); synth.triggerAttackRelease(note, duration); }
+            async function playChord(notes) { await Tone.start(); synth.triggerAttackRelease(notes, "1n"); }
+            async function playScale(noteIds) { await Tone.start(); const now = Tone.now(); noteIds.forEach((note, index) => { synth.triggerAttackRelease(note, "8n", now + index * 0.3); }); }
+
+            function getTheoreticallyCorrectScale(rootNote, scaleType) { const rootData = scalesData[rootNote] || scalesData[Object.keys(enharmonicMap).find(k => enharmonicMap[k] === rootNote)]; if (!rootData) return []; let scale; if (scaleType === 'major') { scale = rootData.major ? [...rootData.major] : []; } else { scale = rootData.naturalMinor ? [...rootData.naturalMinor] : []; } if (scale.length === 0) return []; const sharpNote = (note) => { const sharpMap = { 'C':'C#', 'D':'D#', 'E':'E#', 'F':'F#', 'G':'G#', 'A':'A#', 'B':'B#', 'Bb':'B', 'Eb':'E', 'Ab':'A', 'Db':'D', 'Gb':'G', 'Cb':'C', 'Fb':'F' }; if (note.includes('#')) return note.replace('#', 'x'); return sharpMap[note] || note; }; if (scaleType === 'harmonicMinor') scale[6] = sharpNote(scale[6]); else if (scaleType === 'melodicMinor') { scale[5] = sharpNote(scale[5]); scale[6] = sharpNote(scale[6]); } scale.push(scale[0]); return scale; }
+            function convertTheoreticalNotesToIds(noteNames) { const noteIds = []; let lastMidiIndex = -1; const getPhysicalName = (note) => (enharmonicMap[note] || note).replace('x', '#'); const firstNotePhysicalName = getPhysicalName(noteNames[0]); let startIndex = noteMap.findIndex(id => id.startsWith(firstNotePhysicalName) && parseInt(id.slice(-1)) >= 3); if (startIndex === -1) return []; lastMidiIndex = startIndex; noteIds.push(noteMap[startIndex]); for (let i = 1; i < noteNames.length; i++) { const physicalName = getPhysicalName(noteNames[i]); for (let j = lastMidiIndex + 1; j < noteMap.length; j++) { if (noteMap[j].startsWith(physicalName)) { noteIds.push(noteMap[j]); lastMidiIndex = j; break; } } } return noteIds; }
+            function centerNotesInView(noteIds) { if (!noteIds || noteIds.length === 0) return []; let noteIndexes = noteIds.map(id => noteMap.indexOf(id)); let minIndex = Math.min(...noteIndexes); let maxIndex = Math.max(...noteIndexes); while(maxIndex > viewableKeyboardEndIndex) { noteIds = noteIds.map(id => noteMap[noteMap.indexOf(id) - 12]); noteIndexes = noteIds.map(id => noteMap.indexOf(id)); minIndex = Math.min(...noteIndexes); maxIndex = Math.max(...noteIndexes); } while(minIndex < viewableKeyboardStartIndex) { noteIds = noteIds.map(id => noteMap[noteMap.indexOf(id) + 12]); noteIndexes = noteIds.map(id => noteMap.indexOf(id)); minIndex = Math.min(...noteIndexes); maxIndex = Math.max(...noteIndexes); } return noteIds; }
+            function createPianoKeyboardElement(highlightedNoteIds, isInteractive = false) { const pianoContainer = document.createElement('div'); pianoContainer.className = 'piano-container'; const piano = document.createElement('div'); piano.className = 'piano'; pianoKeys.forEach(keyData => { const keyElement = document.createElement('div'); keyElement.className = `key ${keyData.type}`; if (highlightedNoteIds && highlightedNoteIds.includes(keyData.id)) { keyElement.classList.add('highlighted'); } if(isInteractive) { keyElement.addEventListener('mousedown', () => { playNote(keyData.id, "4n"); keyElement.classList.add('playing'); }); keyElement.addEventListener('mouseup', () => keyElement.classList.remove('playing')); keyElement.addEventListener('mouseleave', () => keyElement.classList.remove('playing')); } const noteNameDiv = document.createElement('div'); noteNameDiv.className = 'note-name'; noteNameDiv.textContent = keyData.note; keyElement.appendChild(noteNameDiv); piano.appendChild(keyElement); }); pianoContainer.appendChild(piano); return pianoContainer; }
+            function renderChords() { const chordsDisplay = document.getElementById('chords-display'); if (!chordsDisplay) return; chordsDisplay.innerHTML = ''; for (const key in chordFormulas) { chordsDisplay.appendChild(createChordCard(activeChordNote, chordFormulas[key])); } }
+            function createChordCard(rootNote, chordInfo) { const card = document.createElement('div'); card.className = `content-card chord-card ${chordInfo.type}`; const rootId = rootNote + '4'; const rootIndex = noteMap.indexOf(rootId); if (rootIndex === -1) return card; const baseNotes = chordInfo.formula.map(interval => noteMap[rootIndex + interval]); const inversions = [{ notes: baseNotes, name: 'Root Position' }]; let currentInversion = [...baseNotes]; for (let i = 0; i < baseNotes.length - 1; i++) { const firstNoteId = currentInversion.shift(); const firstNoteIndex = noteMap.indexOf(firstNoteId); if (firstNoteIndex === -1 || firstNoteIndex + 12 >= noteMap.length) break; const newNoteId = noteMap[firstNoteIndex + 12]; currentInversion.push(newNoteId); inversions.push({ notes: [...currentInversion], name: i === 0 ? '1st Inversion' : '2nd Inversion' }); } const chordName = chordInfo.name === 'Major' ? rootNote : rootNote + chordInfo.name; const header = document.createElement('div'); header.className = 'chord-card-header'; header.innerHTML = `<h3 class="text-2xl font-bold text-white" dir="ltr">${chordName}</h3>`; const cardBody = document.createElement('div'); cardBody.className = 'card-body'; inversions.forEach(inv => { const centeredNotes = centerNotesInView(inv.notes); const displayNotes = inv.notes.map(noteId => noteId.slice(0, -1)).join(' - '); const inversionBlock = document.createElement('div'); inversionBlock.className = 'inversion-block p-4'; const titleAndPlay = document.createElement('div'); titleAndPlay.className = 'flex justify-between items-center'; titleAndPlay.innerHTML = `<h4 class="text-lg font-semibold text-gray-200" dir="ltr">${inv.name}</h4>`; const playButton = document.createElement('button'); playButton.className = 'play-button'; playButton.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" viewBox="0 0 16 16"><path d="M11.596 8.697l-6.363 3.692c-.54.313-1.233-.066-1.233-.697V4.308c0-.63.692-1.01 1.233-.696l6.363 3.692a.802.802 0 0 1 0 1.393z"/></svg>`; playButton.addEventListener('click', () => playChord(inv.notes)); titleAndPlay.appendChild(playButton); inversionBlock.appendChild(titleAndPlay); const notesText = document.createElement('p'); notesText.className = 'text-md text-gray-400 mb-2'; notesText.dir = 'ltr'; notesText.textContent = displayNotes; inversionBlock.appendChild(notesText); inversionBlock.appendChild(createPianoKeyboardElement(centeredNotes)); cardBody.appendChild(inversionBlock); }); card.appendChild(header); card.appendChild(cardBody); return card; }
+            function renderScales() { const majorGrid = document.getElementById('major-scales-grid'); const minorGrid = document.getElementById('minor-scales-grid'); if (!majorGrid || !minorGrid) return; majorGrid.innerHTML = ''; minorGrid.innerHTML = ''; const rootsForMajor = ['C', 'G', 'D', 'A', 'E', 'B', 'F#', 'Db', 'Ab', 'Eb', 'Bb', 'F']; const rootsForMinor = ['A', 'E', 'B', 'F#', 'C#', 'G#', 'D#', 'Bb', 'F', 'C', 'G', 'D']; rootsForMajor.forEach(rootNote => { if (scalesData[rootNote]?.major) majorGrid.appendChild(createScaleCard(rootNote, 'major')); }); rootsForMinor.forEach(rootNote => { if (scalesData[rootNote]?.naturalMinor) minorGrid.appendChild(createScaleCard(rootNote, activeMinorScaleType)); }); }
+            function createScaleCard(rootNote, scaleType) { const card = document.createElement('div'); card.className = 'scale-card border-t border-gray-700 p-4'; const scaleNotes = getTheoreticallyCorrectScale(rootNote, scaleType); if(scaleNotes.length === 0) return document.createDocumentFragment(); const scaleNoteIds = convertTheoreticalNotesToIds(scaleNotes); const centeredNotes = centerNotesInView(scaleNoteIds); const displayNotes = scaleNotes.join(' - '); const scaleInfo = scaleTypeInfo[scaleType] || { name: 'Major', formulaText: 'W-W-H-W-W-W-H' }; const scaleName = `${rootNote} ${scaleInfo.name}`; const textContent = document.createElement('div'); const titleAndPlay = document.createElement('div'); titleAndPlay.className = 'flex justify-between items-center'; titleAndPlay.innerHTML = `<h4 class="text-xl font-bold mt-4 text-white" dir="ltr">${scaleName}</h4>`; const playButton = document.createElement('button'); playButton.className = 'play-button'; playButton.innerHTML = `<svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" viewBox="0 0 16 16"><path d="M11.596 8.697l-6.363 3.692c-.54.313-1.233-.066-1.233-.697V4.308c0-.63.692-1.01 1.233-.696l6.363 3.692a.802.802 0 0 1 0 1.393z"/></svg>`; playButton.addEventListener('click', () => playScale(scaleNoteIds)); titleAndPlay.appendChild(playButton); textContent.appendChild(titleAndPlay); const notesP = document.createElement('p'); notesP.className = 'text-md text-gray-300'; notesP.dir = 'ltr'; notesP.textContent = displayNotes; textContent.appendChild(notesP); const formulaP = document.createElement('p'); formulaP.className = 'text-sm text-gray-400 mt-1'; formulaP.dir = 'ltr'; formulaP.innerHTML = `<b>Formula:</b> ${scaleInfo.formulaText}`; textContent.appendChild(formulaP); const pianoElement = createPianoKeyboardElement(centeredNotes); card.appendChild(textContent); card.appendChild(pianoElement); return card; }
+            function initializeMinorScaleTabs() { const selector = document.getElementById('minor-scale-type-selector'); if(!selector) return; selector.innerHTML = ''; Object.keys(scaleTypeInfo).forEach(typeKey => { const button = document.createElement('button'); button.textContent = scaleTypeInfo[typeKey].name; button.className = 'tab-button px-4 py-2'; button.dir = 'ltr'; button.dataset.type = typeKey; if (typeKey === activeMinorScaleType) button.classList.add('active'); button.addEventListener('click', () => { activeMinorScaleType = typeKey; document.querySelectorAll('#minor-scale-type-selector .tab-button').forEach(btn => btn.classList.remove('active')); button.classList.add('active'); renderScales(); }); selector.appendChild(button); }); }
+            function initializeSelectors() { const chordNoteSelector = document.getElementById('chord-note-selector'); if(!chordNoteSelector) return; chordNoteSelector.innerHTML = ''; allRootNotes.forEach(note => { const button = document.createElement('button'); button.textContent = note; button.dataset.note = note; button.className = 'note-button'; if (note === activeChordNote) button.classList.add('active'); button.addEventListener('click', () => { activeChordNote = note; document.querySelectorAll('#chord-note-selector .note-button').forEach(btn => btn.classList.remove('active')); button.classList.add('active'); renderChords(); }); chordNoteSelector.appendChild(button); }); }
+            function createInteractivePiano() { const container = document.getElementById('interactive-piano-container'); if(!container) return; container.innerHTML = ''; container.appendChild(createPianoKeyboardElement(null, true)); }
+
+            createInteractivePiano();
+            initializeSelectors();
+            initializeMinorScaleTabs();
+            renderChords();
+            renderScales();
+            musicAppInitialized = true;
+        }
+
+        // Register Service Worker for PWA
+        if ('serviceWorker' in navigator) {
+          window.addEventListener('load', () => {
+            navigator.serviceWorker.register('/sw.js').then(registration => {
+              console.log('ServiceWorker registration successful');
+            }).catch(err => {
+              console.log('ServiceWorker registration failed: ', err);
+            });
+          });
+        }
+    </script>
+</body>
+</html>
