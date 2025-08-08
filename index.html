@@ -9,7 +9,8 @@
     <script src="https://cdnjs.cloudflare.com/ajax/libs/tone/14.7.77/Tone.js"></script>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Heebo:wght@400;700;800&display=swap" rel="stylesheet">
+    <!-- NEW: Premium Fonts -->
+    <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:wght@700;800&family=Roboto:wght@400;500&display=swap" rel="stylesheet">
     <!-- PWA Manifest -->
     <link rel="manifest" href="manifest.json">
     <style>
@@ -18,7 +19,7 @@
             scroll-padding-top: 80px;
         }
         body {
-            font-family: 'Heebo', sans-serif;
+            font-family: 'Roboto', sans-serif; /* New body font */
             background-color: #000;
             background-image: url('https://images.unsplash.com/photo-1507838153414-b4b713384a76?q=80&w=2070&auto=format&fit=crop');
             background-size: cover;
@@ -28,13 +29,34 @@
             background-color: rgba(0, 0, 0, 0.85);
             color: #d1d5db;
         }
+        /* New heading font */
+        h1, h2, h3, h4 {
+            font-family: 'Playfair Display', serif;
+        }
+        /* Gold accent for text */
+        .gold-text {
+            background: linear-gradient(145deg, #f0e6d2, #c89b3f 80%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
         .content-card {
-            background-color: rgba(17, 24, 39, 0.7);
-            backdrop-filter: blur(8px);
-            border-radius: 12px;
-            border: 1px solid rgba(255,255,255,0.1);
+            background-color: rgba(17, 24, 39, 0.85);
+            backdrop-filter: blur(10px);
+            border-radius: 16px;
+            border: 1px solid rgba(255, 255, 255, 0.1);
             box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
             overflow: hidden;
+            transition: transform 0.3s ease, box-shadow 0.3s ease;
+        }
+        .content-card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 12px 40px 0 rgba(0, 0, 0, 0.5);
+        }
+        /* Gold border effect */
+        .gold-border-card {
+            border: 2px solid transparent;
+            background-clip: padding-box;
+            border-image: linear-gradient(145deg, #c89b3f, #f0e6d2) 1;
         }
         .form-input, .qa-textarea {
             background-color: rgba(31, 41, 55, 0.7);
@@ -43,16 +65,21 @@
         }
         .form-input:focus, .qa-textarea:focus {
             background-color: rgba(31, 41, 55, 1);
-            border-color: #6366f1;
+            border-color: #c89b3f;
             outline: none;
-            box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.5);
+            box-shadow: 0 0 0 2px rgba(200, 155, 63, 0.5);
         }
         .action-button {
-            background-color: #4f46e5;
-            transition: background-color 0.2s;
+            background: linear-gradient(145deg, #c89b3f, #745822);
+            color: white;
+            border: none;
+            transition: all 0.3s ease;
+            box-shadow: 0 4px 15px 0 rgba(0, 0, 0, 0.4);
+            font-weight: bold;
         }
         .action-button:hover {
-            background-color: #4338ca;
+            transform: translateY(-2px);
+            box-shadow: 0 6px 20px 0 rgba(200, 155, 63, 0.4);
         }
         .nav-link {
             padding: 8px 16px;
@@ -75,11 +102,11 @@
             color: #d1d5db;
         }
         .note-button.active {
-            background-color: #4f46e5;
+            background: linear-gradient(145deg, #c89b3f, #745822);
             color: white;
             transform: scale(1.1);
-            box-shadow: 0 4px 10px rgba(79, 70, 229, 0.4);
-            border-color: #4f46e5;
+            box-shadow: 0 4px 10px rgba(200, 155, 63, 0.4);
+            border-color: #f0e6d2;
         }
         .piano-container {
             overflow-x: auto;
@@ -101,7 +128,7 @@
         }
         .white { width: 22px; height: 120px; background-color: #f8f9fa; border-radius: 0 0 4px 4px; z-index: 1; }
         .black { width: 13px; height: 75px; background-color: #212529; margin: 0 -6.5px; z-index: 2; border-radius: 0 0 2px 2px; }
-        .key.playing { background: #4f46e5; border-color: #6366f1; }
+        .key.playing { background: #c89b3f; border-color: #f0e6d2; }
         .key.highlighted.white { background: linear-gradient(to bottom, #34d399, #059669); }
         .key.highlighted.black { background: linear-gradient(to bottom, #10b981, #059669); }
         .chord-card .key.highlighted.white { background: linear-gradient(to bottom, #60a5fa, #3b82f6); }
@@ -110,7 +137,7 @@
         .white .note-name { bottom: 8px; color: #343a40; }
         .black .note-name { bottom: 6px; color: #f8f9fa; }
         .play-button { background-color: rgba(31, 41, 55, 0.7); border: 1px solid #4b5563; color: #d1d5db; padding: 8px 12px; border-radius: 6px; transition: all 0.2s; cursor: pointer; }
-        .play-button:hover { background-color: #4f46e5; border-color: #4f46e5; }
+        .play-button:hover { background: linear-gradient(145deg, #c89b3f, #745822); border-color: #f0e6d2; }
         [dir="ltr"] { direction: ltr; }
         [dir="rtl"] { direction: rtl; }
     </style>
@@ -122,7 +149,7 @@
         <div class="w-full max-w-md">
             <div class="content-card p-8">
                 <div class="text-center mb-8">
-                    <h1 class="text-4xl font-extrabold text-white" dir="ltr">AlphaKey</h1>
+                    <h1 class="text-5xl font-extrabold gold-text" dir="ltr">AlphaKey</h1>
                     <p class="text-gray-300 mt-2">התחבר או הירשם כדי לגשת למאגרים</p>
                 </div>
                 <form id="auth-form" class="space-y-6">
@@ -148,12 +175,12 @@
     <div id="app-container" class="hidden">
         <header class="bg-gray-900/50 backdrop-blur-sm shadow-lg sticky top-0 z-20 border-b border-gray-700">
             <nav class="container mx-auto px-4 sm:px-6 py-3 flex justify-between items-center">
-                <a href="#interactive-piano" class="text-2xl font-bold text-white">Naorbar | AlphaKey</a>
+                <a href="#interactive-piano" class="text-2xl font-bold gold-text">AlphaKey</a>
                 <div class="hidden sm:flex items-center space-x-2 space-x-reverse">
                     <a href="#chords" class="nav-link">אקורדים</a>
                     <a href="#scales" class="nav-link">סולמות</a>
                     <a href="#q-and-a" class="nav-link">שאלות ותשובות</a>
-                    <a href="#about" class="nav-link">אודות</a>
+                    <a href="#about" class="nav-link">שיעורים פרטיים</a>
                     <a href="https://whatsapp.com/channel/0029VbAvIpK9RZAYqDynbn3y" target="_blank" class="nav-link">קהילה</a>
                     <button id="logout-btn" class="nav-link">התנתק</button>
                 </div>
@@ -173,7 +200,7 @@
                 <a href="#chords" class="nav-link mobile-link-loggedin text-lg">אקורדים</a>
                 <a href="#scales" class="nav-link mobile-link-loggedin text-lg">סולמות</a>
                 <a href="#q-and-a" class="nav-link mobile-link-loggedin text-lg">שאלות ותשובות</a>
-                <a href="#about" class="nav-link mobile-link-loggedin text-lg">אודות</a>
+                <a href="#about" class="nav-link mobile-link-loggedin text-lg">שיעורים פרטיים</a>
                 <a href="https://whatsapp.com/channel/0029VbAvIpK9RZAYqDynbn3y" target="_blank" class="nav-link mobile-link-loggedin text-lg">קהילה</a>
                 <button id="logout-btn-mobile" class="nav-link text-lg">התנתק</button>
             </div>
@@ -186,6 +213,14 @@
                         <h2 class="text-3xl font-extrabold text-white mb-4">פסנתר אינטראקטיבי</h2>
                         <p class="text-lg text-gray-300 mb-6">לחץ על הקלידים כדי לשמוע את הצלילים</p>
                         <div id="interactive-piano-container"></div>
+                    </div>
+                </section>
+                
+                <section id="trial-lesson" class="py-10">
+                    <div class="content-card gold-border-card p-8 text-center">
+                        <h2 class="text-4xl font-extrabold gold-text">רוצה ללמוד לנגן מהלב?</h2>
+                        <p class="text-lg text-gray-300 my-4 max-w-2xl mx-auto">הצטרף לשיעור ניסיון בשיטת AlphaKey וגלה את הנגן שבך. נלמד יחד איך להבין מוזיקה, לאלתר, ולנגן את השירים שאתה אוהב.</p>
+                        <a href="#about" class="action-button inline-block mt-4 text-white font-bold py-3 px-8 rounded-md text-xl">אני רוצה לקבוע שיעור ניסיון!</a>
                     </div>
                 </section>
 
@@ -239,8 +274,8 @@
                         <div class="mt-8 pt-6 border-t border-gray-700">
                              <h3 class="text-2xl font-bold text-white mb-4">יצירת קשר</h3>
                              <div class="space-y-2 text-lg">
-                                <p><a href="tel:0535212574" class="hover:text-indigo-400"><strong>טלפון:</strong> 053-5212574</a></p>
-                                <p><a href="mailto:naorbpiano@gmail.com" class="hover:text-indigo-400"><strong>אימייל:</strong> naorbpiano@gmail.com</a></p>
+                                <p><a href="tel:0535212574" class="hover:text-yellow-300"><strong>טלפון:</strong> 053-5212574</a></p>
+                                <p><a href="mailto:naorbpiano@gmail.com" class="hover:text-yellow-300"><strong>אימייל:</strong> naorbpiano@gmail.com</a></p>
                              </div>
                         </div>
                     </div>
@@ -344,7 +379,7 @@
                     let questionHTML = `<p class="text-gray-400 text-sm">${question.email} שאל:</p><p class="text-white text-lg mt-1">${question.text}</p>`;
                     
                     if (question.answer) {
-                        questionHTML += `<div class="mt-4 pt-3 border-t border-gray-600"><p class="text-indigo-300 text-sm">התשובה של נאור:</p><p class="text-gray-200 mt-1">${question.answer}</p></div>`;
+                        questionHTML += `<div class="mt-4 pt-3 border-t border-gray-600"><p class="gold-text text-sm">התשובה של נאור:</p><p class="text-gray-200 mt-1">${question.answer}</p></div>`;
                     } else if (auth.currentUser && auth.currentUser.uid === adminUID) {
                         questionHTML += `<form class="answer-form mt-3" data-id="${docSnap.id}"><textarea class="qa-textarea w-full rounded-md p-2" placeholder="כתוב את תשובתך..."></textarea><button type="submit" class="action-button text-sm py-2 px-3 rounded-md mt-2">שלח תשובה</button></form>`;
                     }
